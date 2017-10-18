@@ -15,6 +15,7 @@ where T is temperature [°C], ln is natural log function, and f is SBE 3S output
 
 Example Calibration Data (sensor serial number 2213, 30 May 1996):
 g = 4.28793855e-03     h = 6.25807786e-04     i = 2.19368239e-05     j = 1.84262924e-06     f0 = 1000.000
+
 http://www.seabird.com/sbe3s-temperature-sensor
 
 # SBE 4
