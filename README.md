@@ -16,7 +16,7 @@ where T is temperature [°C], ln is natural log function, and f is SBE 3S output
 Example Calibration Data (sensor serial number 2213, 30 May 1996):
 g = 4.28793855e-03     h = 6.25807786e-04     i = 2.19368239e-05     j = 1.84262924e-06     f0 = 1000.000
 
-http://www.seabird.com/sbe3s-temperature-sensor
+
 
 # SBE 4
 The SBE 4 conductivity sensor is a modular, self-contained instrument that measures conductivity from 0 to 7 S/m, covering the full range of lake and oceanic applications. The sensor has electrically isolated power circuits and optically coupled outputs to eliminate any possibility of noise and corrosion caused by ground loops. Interfacing is also simplified by the square-wave variable frequency output signal (nominally 2.5 to 7.5 kHz, corresponding to 0 to 7 S/m). The sensor offers improved temperature compensation, smaller fit residuals, and faster turn-on stabilization times.
@@ -37,4 +37,4 @@ Practical Salinity Scale 1978: C(35,15,0) = 4.2914 [S/m]
 
 g = -1.05697877e+01    h = 1.42707291e+00    i = -4.32023820e-03    j = 4.53455585e-04
 
-http://www.seabird.com/sbe4-conductivity-sensor
+
