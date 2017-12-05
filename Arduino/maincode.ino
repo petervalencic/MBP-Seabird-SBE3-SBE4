@@ -1,3 +1,11 @@
+/*****************************************************************
+ * Merjenje temperature in slanosti s pomočjo 
+ * temperaturne sonde SeaBird SBE-3,
+ * sonde za slanost Seabird SBE-4 ter miktonotrolerja 
+ * Arduino UNO
+ * 
+ * Peter Valenčič, 05.12.2017  
+ ****************************************************************/
 
 #include <SPI.h>
 #include <SD.h>
@@ -171,6 +179,7 @@ void setup() {
 }
 
 
+//prekinitvena servisna rutina
 ISR(TIMER1_OVF_vect)
 {
   TCNT1 = timer1_counter; //preload časovnika
