@@ -43,11 +43,13 @@ int cnt_temp = 0;
 int cnt_slanost = 0;
 int dve_sek = 1;
 
+
 //
 int l_temp;
 int l_slanost;
 
 boolean bData = false; //flag nam pove ali so prebrani podatki 
+boolean bPrvaMeritev = false; 
 
 EthernetServer server = EthernetServer(80);
 
@@ -182,6 +184,9 @@ void setup() {
 //prekinitvena servisna rutina
 ISR(TIMER1_OVF_vect)
 {
+  
+  if (bPrvaMeritev == false) return;
+  
   TCNT1 = timer1_counter; //preload časovnika
 
   if (dve_sek++ == 2)
@@ -219,6 +224,16 @@ double calcTemp(double frekvenca)
 
 //glavna zanka programa
 void loop() {
+
+  if (bPrvaMeritev == false)
+  {
+    bPrvaMeritev = true;
+    bData = false;
+    l_temp = 0;
+    l_slanost = 0;
+    return;
+  }
+  
   EthernetClient client = server.available();
 
   if (client) {
