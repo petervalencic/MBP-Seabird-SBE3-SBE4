@@ -210,6 +210,13 @@ void beriSlanost()
   cnt_slanost++;
 }
 
+//metoda preračuna temperaturo iz frekvence
+double calcTemp(double frekvenca)
+{
+  double logRes = log(f_sbe3 / frekvenca);
+  return 1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15;
+}
+
 //glavna zanka programa
 void loop() {
   EthernetClient client = server.available();
