@@ -3,36 +3,87 @@
 #include <SD.h>
 #include <Ethernet.h>
 
+//mrežne nastavitve
 byte myMac[6];
 byte myIP[4];
 byte myNM[4];
 byte myGW[4];
 byte myDNS[4];
 
+//priključne sponke za SBE3 in SBE4
+const byte interruptPinTemp = 2;
+const byte interruptPinSlanost = 3;
+
+
+//konstante za SBE3
+const double g_sbe3 = 0;
+const double h_sbe3 = 0;
+const double i_sbe3 = 0;
+const double j_sbe3 = 0;
+const double f_sbe3 = 1000;
+
+//konstante za SBE4
+const double g_sbe4 = 0;
+const double h_sbe4 = 0;
+const double i_sbe4 = 0;
+const double j_sbe4 = 0;
+const double f_sbe4 = 1000;
+
+//pomožne spremenljivke
+int timer1_counter;
+int cnt_temp = 0;
+int cnt_slanost = 0;
+int dve_sek = 1;
+
+//
+int l_temp;
+int l_slanost;
+
+boolean bData = false; //flag nam pove ali so prebrani podatki 
+
 EthernetServer server = EthernetServer(80);
 
-
+//setup metoda se izvede najprej in nastavi ustrezne parametre modula
 void setup() {
   Serial.begin(9600);
+  noInterrupts();     //prekinemo izvajanje interruptov
   delay(500);
   Serial.println("+----------------------+");
   Serial.println("|   MBP - SBE3 - SBE4  |");
   Serial.println("+----------------------+");
 
-  // preberi datoteko iz SD kartice
+  //določimo vhode za branje frekvence
+  pinMode(interruptPinTemp, INPUT_PULLUP);
+  pinMode(interruptPinSlanost, INPUT_PULLUP);
+
+  //določimo metodo, ki se bo ob prekinitvi izvedla
+  attachInterrupt(digitalPinToInterrupt(interruptPinTemp), beriTemperaturo, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(interruptPinTemp), beriSlanost, CHANGE);
+
+  //nastavimo časovno prekinitev na 1 sekundo pri taktu 16 MHz
+  TCCR1A = 0;
+  TCCR1B = 0;
+  timer1_counter = 34286; //prenaložen timer 65536-16MHz/256/2Hz
+
+  TCNT1 = timer1_counter;
+  TCCR1B |= (1 << CS12);    //256 prescaler
+  TIMSK1 |= (1 << TOIE1);   //omogoči timer overflow prekinitev
+
+  // preveri če obstaja SD kartica
   if (!SD.begin(4))
   {
     Serial.println("SD card not present...");
     return;
   }
 
-  //read from file which contains configuration for network
+  //prebere datoteko networ.txt, v njej so shranjene mrežne nastavitve
   File fh = SD.open("network.txt", FILE_READ);
   char netBuffer[32];
 
   int chPos = 0;
   int lineNo = 0;
 
+  //sprehodimo se skozi vse zapise v datoteki in ustrezno zapišemo vrednosti
   while (fh.available())
   {
     char ch = fh.read();
@@ -110,12 +161,47 @@ void setup() {
   Ethernet.begin(myMac, myIP, myDNS, myGW, myNM);
   Serial.println(Ethernet.localIP());
   Serial.println("\r\nStarting webserver");  
+  
+  //startamo server socket
   server.begin();
 
-  
+  //omogočimo prekinitve
+  interrupts();
 
 }
 
+
+ISR(TIMER1_OVF_vect)
+{
+  TCNT1 = timer1_counter; //preload časovnika
+
+  if (dve_sek++ == 2)
+  {
+    //ker merimo na 2 sekunde delimo frekvenco z 2
+    l_temp = cnt_temp / 2;
+    l_slanost = cnt_slanost / 2;
+
+    //sporočimo, da so prisotni podatki
+    bData = true;
+
+    //resetiramo števce
+    cnt_temp = 0;
+    cnt_slanost = 0;
+    dve_sek = 1;
+  }
+}
+
+void beriTemperaturo()
+{
+  cnt_temp++;
+}
+
+void beriSlanost()
+{
+  cnt_slanost++;
+}
+
+//glavna zanka programa
 void loop() {
   EthernetClient client = server.available();
 
@@ -131,6 +217,9 @@ void loop() {
 }
 
 
+
+
+//metoda prebere MAC vrednost in jo zapiše v array
 byte getMAC(char* macBuf, byte* thisMAC) {
   byte thisLen = strlen(macBuf);
   byte thisOctet = 1;
@@ -149,6 +238,7 @@ byte getMAC(char* macBuf, byte* thisMAC) {
 
 }
 
+//metoda prebere IP naslov in ga zapiše v array
 byte getIP(char* ipBuf, byte* thisIP) {
   byte thisLen = strlen(ipBuf);
   byte thisOctet = 1;
