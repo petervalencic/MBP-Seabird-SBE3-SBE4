@@ -272,7 +272,18 @@ void loop() {
         Serial.write(c);
         if (c == '\n' && bTekocaVrstica)
         {
-          client.println("...");
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: text/xml");
+          client.println("Connection: close");  
+          client.println("<?xml version='1.0' encoding='UTF-8'?>");
+          client.println("<ROOT>");
+          client.println("<TEMP>");
+          client.print(calcTemp(l_temp), 3);
+          client.println("</TEMP>");
+          client.println("<SAL>");
+          client.print(calcSlanost(l_slanost), 3);
+          client.println("</SAL>");
+          client.println("</ROOT>");
           break;
         }
 
