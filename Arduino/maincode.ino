@@ -1,10 +1,10 @@
 /*****************************************************************
- * Merjenje temperature in slanosti s pomočjo 
- * temperaturne sonde SeaBird SBE-3,
- * sonde za slanost Seabird SBE-4 ter miktonotrolerja 
- * Arduino UNO
- * 
- * Peter Valenčič, 05.12.2017  
+   Merjenje temperature in slanosti s pomočjo
+   temperaturne sonde SeaBird SBE-3,
+   sonde za slanost Seabird SBE-4 ter miktonotrolerja
+   Arduino UNO
+
+   Peter Valenčič, 05.12.2017
  ****************************************************************/
 
 #include <SPI.h>
@@ -49,12 +49,15 @@ int dve_sek = 1;
 int l_temp;
 int l_slanost;
 
-boolean bData = false; //flag nam pove ali so prebrani podatki 
-boolean bPrvaMeritev = false; 
+boolean bData = false; //flag nam pove ali so prebrani podatki
+boolean bPrvaMeritev = false;
 
 EthernetServer server = EthernetServer(80);
 
-//setup metoda se izvede najprej in nastavi ustrezne parametre modula
+/**
+   setup(), metoda se izvede ob priključitvi napetosti na mikroknotroler.
+   V metodi se nastavijo vsi potrebni parametri
+*/
 void setup() {
   Serial.begin(9600);
   noInterrupts();     //prekinemo izvajanje interruptov
@@ -171,8 +174,8 @@ void setup() {
   Serial.println("\r\nStarting ethernet");
   Ethernet.begin(myMac, myIP, myDNS, myGW, myNM);
   Serial.println(Ethernet.localIP());
-  Serial.println("\r\nStarting webserver");  
-  
+  Serial.println("\r\nStarting webserver");
+
   //startamo server socket
   server.begin();
 
@@ -183,15 +186,16 @@ void setup() {
 
 
 /**
- * Prekinitvena servisna rutina. Izvaja se 1x na sekundo
- */
+   Prekinitvena servisna rutina. Izvaja se 1x na sekundo
+*/
 ISR(TIMER1_OVF_vect)
 {
-  
+
   if (bPrvaMeritev == false) return;
-  
+
   TCNT1 = timer1_counter; //preload časovnika
 
+  //merjenje izvajamo vsake 2 sekunde in frekvenco delimo z 2
   if (dve_sek++ == 2)
   {
     //ker merimo na 2 sekunde delimo frekvenco z 2
@@ -208,12 +212,13 @@ ISR(TIMER1_OVF_vect)
   }
 }
 
-
+//števec, ki se povečuje v prekinitvi za temperaturo
 void beriTemperaturo()
 {
   cnt_temp++;
 }
 
+//števec, ki se povečuje v prekinitvi za slanost
 void beriSlanost()
 {
   cnt_slanost++;
@@ -229,6 +234,7 @@ double calcTemp(double frekvenca)
   return 1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15;
 }
 
+//metoda preračuna slanost iz frekvence
 double calcSlanost(double frekvenca)
 {
   if (frekvenca = 0) {
@@ -239,10 +245,11 @@ double calcSlanost(double frekvenca)
 }
 
 /**
- * Glavna zanka programa
- */
+   Glavna zanka programa
+*/
 void loop() {
 
+  //prvo meritev izpustimo
   if (bPrvaMeritev == false)
   {
     bPrvaMeritev = true;
@@ -251,18 +258,40 @@ void loop() {
     l_slanost = 0;
     return;
   }
-  
+
   EthernetClient client = server.available();
 
   if (client) {
-    Serial.println("new client");
+    Serial.println("nova zahteva");
+    boolean bTekocaVrstica = true;
+    while (client.connected())
+    {
+      if (client.available())
+      {
+        char c = client.read();
+        Serial.write(c);
+        if (c == '\n' && bTekocaVrstica)
+        {
+          client.println("...");
+          break;
+        }
 
+        if (c == '\n')
+        {
+          bTekocaVrstica = true;
+        } else if (c != '\r') {
+          bTekocaVrstica = false;
+        }
+
+      }
+    }
     delay(1);
-    // close the connection:
+    // zapremo povezavo
     client.stop();
-    Serial.println("client disconnected");
   }
 
+
+  Serial.println("client disconnected");
 }
 
 //metoda prebere MAC vrednost in jo zapiše v array
