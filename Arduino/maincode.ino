@@ -24,17 +24,19 @@ const byte interruptPinSlanost = 3;
 
 
 //konstante za SBE3
-const double g_sbe3 = 0;
-const double h_sbe3 = 0;
-const double i_sbe3 = 0;
-const double j_sbe3 = 0;
+//Kalibrirano Sea-Bird GmbH, SBE3 T121219Mar16
+const double g_sbe3 = 4.85442486e-003;
+const double h_sbe3 = 6.77400494e-004;
+const double i_sbe3 = 2.65502731e-005;
+const double j_sbe3 = 2.06782794e-006;
 const double f_sbe3 = 1000;
 
 //konstante za SBE4
-const double g_sbe4 = 0;
-const double h_sbe4 = 0;
-const double i_sbe4 = 0;
-const double j_sbe4 = 0;
+//Kalibrirano Sea-Bird GmbH, SBE4 C141601Mar16
+const double g_sbe4 = -4.10731453e+000;
+const double h_sbe4 =  5.02267656e-001;
+const double i_sbe4 = -1.63378659e-004;
+const double j_sbe4 =  3.70269818e-005;
 const double f_sbe4 = 1000;
 
 //pomožne spremenljivke
@@ -44,7 +46,6 @@ int cnt_slanost = 0;
 int dve_sek = 1;
 
 
-//
 int l_temp;
 int l_slanost;
 
@@ -181,7 +182,9 @@ void setup() {
 }
 
 
-//prekinitvena servisna rutina
+/**
+ * Prekinitvena servisna rutina. Izvaja se 1x na sekundo
+ */
 ISR(TIMER1_OVF_vect)
 {
   
@@ -205,6 +208,7 @@ ISR(TIMER1_OVF_vect)
   }
 }
 
+
 void beriTemperaturo()
 {
   cnt_temp++;
@@ -218,11 +222,25 @@ void beriSlanost()
 //metoda preračuna temperaturo iz frekvence
 double calcTemp(double frekvenca)
 {
+  if (frekvenca = 0) {
+    return 0;
+  }
   double logRes = log(f_sbe3 / frekvenca);
   return 1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15;
 }
 
-//glavna zanka programa
+double calcSlanost(double frekvenca)
+{
+  if (frekvenca = 0) {
+    return 0;
+  }
+  double logRes = log(f_sbe3 / frekvenca);
+  return 1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15;
+}
+
+/**
+ * Glavna zanka programa
+ */
 void loop() {
 
   if (bPrvaMeritev == false)
@@ -246,9 +264,6 @@ void loop() {
   }
 
 }
-
-
-
 
 //metoda prebere MAC vrednost in jo zapiše v array
 byte getMAC(char* macBuf, byte* thisMAC) {
