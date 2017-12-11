@@ -38,18 +38,18 @@ const double h_sbe4 =  5.02267656e-001;
 const double i_sbe4 = -1.63378659e-004;
 const double j_sbe4 =  3.70269818e-005;
 const double f_sbe4 = 1000;
+const double Pcor   = -9.5700e-008;
+const double Tcor   = 3.2500e-006;
+const double p      = 0; //tlak v decibarih
 
 //pomožne spremenljivke
 int timer1_counter;
 int cnt_temp = 0;
 int cnt_slanost = 0;
-int dve_sek = 1;
-
 
 int l_temp;
 int l_slanost;
 
-boolean bData = false; //flag nam pove ali so prebrani podatki
 boolean bPrvaMeritev = false;
 
 EthernetServer server = EthernetServer(80);
@@ -63,8 +63,6 @@ void setup() {
   noInterrupts();     //prekinemo izvajanje interruptov
   delay(500);
   Serial.println("+----------------------+");
-  Serial.println("|   MBP - SBE3 - SBE4  |");
-  Serial.println("+----------------------+");
 
   //določimo vhode za branje frekvence
   pinMode(interruptPinTemp, INPUT_PULLUP);
@@ -72,16 +70,16 @@ void setup() {
 
   //določimo metodo, ki se bo ob prekinitvi izvedla
   attachInterrupt(digitalPinToInterrupt(interruptPinTemp), beriTemperaturo, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(interruptPinTemp), beriSlanost, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(interruptPinSlanost), beriSlanost, CHANGE);
 
   //nastavimo časovno prekinitev na 1 sekundo pri taktu 16 MHz
   TCCR1A = 0;
   TCCR1B = 0;
-  timer1_counter = 34286; //prenaložen timer 65536-16MHz/256/2Hz
+  timer1_counter = 34286;   // preload timer 65536-16MHz/256/2Hz
 
-  TCNT1 = timer1_counter;
-  TCCR1B |= (1 << CS12);    //256 prescaler
-  TIMSK1 |= (1 << TOIE1);   //omogoči timer overflow prekinitev
+  TCNT1 = timer1_counter;   // preload timer
+  TCCR1B |= (1 << CS12);    // 256 prescaler
+  TIMSK1 |= (1 << TOIE1);   // enable timer overflow interrupt
 
   // preveri če obstaja SD kartica
   if (!SD.begin(4))
@@ -193,23 +191,17 @@ ISR(TIMER1_OVF_vect)
 
   if (bPrvaMeritev == false) return;
 
-  TCNT1 = timer1_counter; //preload časovnika
+  TCNT1 += timer1_counter; //preload časovnika
 
-  //merjenje izvajamo vsake 2 sekunde in frekvenco delimo z 2
-  if (dve_sek++ == 2)
-  {
-    //ker merimo na 2 sekunde delimo frekvenco z 2
-    l_temp = cnt_temp / 2;
-    l_slanost = cnt_slanost / 2;
+  
+    l_temp = cnt_temp;
+    l_slanost = cnt_slanost;
 
-    //sporočimo, da so prisotni podatki
-    bData = true;
-
+  
     //resetiramo števce
     cnt_temp = 0;
     cnt_slanost = 0;
-    dve_sek = 1;
-  }
+  
 }
 
 //števec, ki se povečuje v prekinitvi za temperaturo
@@ -227,21 +219,16 @@ void beriSlanost()
 //metoda preračuna temperaturo iz frekvence
 double calcTemp(double frekvenca)
 {
-  if (frekvenca = 0) {
-    return 0;
-  }
+  
   double logRes = log(f_sbe3 / frekvenca);
-  return 1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15;
+  Serial.println(frekvenca,3);
+  return (1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15);
 }
 
 //metoda preračuna slanost iz frekvence
-double calcSlanost(double frekvenca)
+double calcSlanost(double f,double temperatura)
 {
-  if (frekvenca = 0) {
-    return 0;
-  }
-  double logRes = log(f_sbe3 / frekvenca);
-  return 1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15;
+  return (g_sbe4+h_sbe4*pow(f,2)+i_sbe4*pow(f,3)+j_sbe4*pow(f,4))/10*(1+Tcor*temperatura+Pcor*p);
 }
 
 /**
@@ -253,11 +240,16 @@ void loop() {
   if (bPrvaMeritev == false)
   {
     bPrvaMeritev = true;
-    bData = false;
     l_temp = 0;
     l_slanost = 0;
     return;
   }
+  
+     Serial.println("xxx");
+     Serial.println(l_temp);
+     Serial.println(calcTemp(l_temp),3);
+    
+    
 
   EthernetClient client = server.available();
 
@@ -276,14 +268,24 @@ void loop() {
           client.println("Content-Type: text/xml");
           client.println("Connection: close");  
           client.println("<?xml version='1.0' encoding='UTF-8'?>");
-          client.println("<ROOT>");
-          client.println("<TEMP>");
+          client.println("<root>");
+          client.println("<temperature>");
+          client.println("<temp>");
           client.print(calcTemp(l_temp), 3);
-          client.println("</TEMP>");
-          client.println("<SAL>");
+          client.println("</temp>");
+          client.println("<freq>");
+          client.println(l_temp,3);
+          client.println("</freq>");
+          client.println("</temperature>");
+          client.println("<salinity>");
+          client.println("<sal>");
           client.print(calcSlanost(l_slanost), 3);
-          client.println("</SAL>");
-          client.println("</ROOT>");
+          client.println("</sal>");
+          client.println("<freq>");
+          client.println(l_slanost,3);
+          client.println("</freq>");
+          client.println("</salinity>");
+          client.println("</root>");
           break;
         }
 
@@ -302,7 +304,7 @@ void loop() {
   }
 
 
-  Serial.println("client disconnected");
+ 
 }
 
 //metoda prebere MAC vrednost in jo zapiše v array
