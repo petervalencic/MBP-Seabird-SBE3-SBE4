@@ -40,7 +40,7 @@ const double j_sbe4 =  3.70269818e-005;
 const double f_sbe4 = 1000;
 const double Pcor   = -9.5700e-008;
 const double Tcor   = 3.2500e-006;
-const double p      = 0; //tlak v decibarih
+const double p      = 0;
 
 //pomožne spremenljivke
 int timer1_counter;
@@ -221,14 +221,13 @@ double calcTemp(double frekvenca)
 {
   
   double logRes = log(f_sbe3 / frekvenca);
-  Serial.println(frekvenca,3);
   return (1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15);
 }
 
 //metoda preračuna slanost iz frekvence
 double calcSlanost(double f,double temperatura)
 {
-  return (g_sbe4+h_sbe4*pow(f,2)+i_sbe4*pow(f,3)+j_sbe4*pow(f,4))/10*(1+Tcor*temperatura+Pcor*p);
+  return (g_sbe4+h_sbe4*pow(f,2)+i_sbe4*pow(f,3)+j_sbe4*pow(f,4))/10*(1+Tcor*temperatura+Pcor*p); //   1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15;
 }
 
 /**
@@ -247,7 +246,9 @@ void loop() {
   
      Serial.println("xxx");
      Serial.println(l_temp);
-     Serial.println(calcTemp(l_temp),3);
+     Serial.println(l_slanost);
+     
+    // Serial.println(calcTemp(l_temp),3);
     
     
 
@@ -266,26 +267,28 @@ void loop() {
         {
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/xml");
-          client.println("Connection: close");  
+          client.println("Connection: close"); 
+          client.println(); 
           client.println("<?xml version='1.0' encoding='UTF-8'?>");
           client.println("<root>");
           client.println("<temperature>");
-          client.println("<temp>");
+          client.println("<value>");
           client.print(calcTemp(l_temp), 3);
-          client.println("</temp>");
+          client.println("</value>");
           client.println("<freq>");
-          client.println(l_temp,3);
+          client.println(l_temp);
           client.println("</freq>");
           client.println("</temperature>");
           client.println("<salinity>");
-          client.println("<sal>");
-          client.print(calcSlanost(l_slanost), 3);
-          client.println("</sal>");
+          client.println("<value>");
+          client.print(calcSlanost(l_slanost,0), 3);
+          client.println("</value>");
           client.println("<freq>");
-          client.println(l_slanost,3);
+          client.println(l_slanost);
           client.println("</freq>");
           client.println("</salinity>");
           client.println("</root>");
+          client.println();
           break;
         }
 
