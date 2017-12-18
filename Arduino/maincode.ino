@@ -227,7 +227,11 @@ double calcTemp(double frekvenca)
 //metoda preračuna slanost iz frekvence
 double calcSlanost(double f,double temperatura)
 {
-  return (g_sbe4+h_sbe4*pow(f,2)+i_sbe4*pow(f,3)+j_sbe4*pow(f,4))/10*(1+Tcor*temperatura+Pcor*p); //   1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15;
+  double frek = f;
+  if (frek <= 0) return 0;
+
+  frek = frek /1000;
+  return (g_sbe4+h_sbe4*pow(frek,2)+i_sbe4*pow(frek,3)+j_sbe4*pow(frek,4))/10*(1+Tcor*temperatura+Pcor*p); 
 }
 
 /**
@@ -245,8 +249,9 @@ void loop() {
   }
   
      Serial.println("xxx");
-     Serial.println(l_temp);
      Serial.println(l_slanost);
+
+     Serial.println(calcSlanost(l_slanost,15));
      
     // Serial.println(calcTemp(l_temp),3);
     
@@ -281,7 +286,7 @@ void loop() {
           client.println("</temperature>");
           client.println("<salinity>");
           client.println("<value>");
-          client.print(calcSlanost(l_slanost,0), 3);
+          client.print(calcSlanost(l_slanost,15),3);
           client.println("</value>");
           client.println("<freq>");
           client.println(l_slanost);
