@@ -47,8 +47,9 @@ int timer1_counter;
 int cnt_temp = 0;
 int cnt_slanost = 0;
 
-int l_temp;
-int l_slanost;
+//frekvenca iz SBE3 in SBE4
+int f_temp = 0;
+int f_slanost = 0;
 
 boolean bPrvaMeritev = false;
 
@@ -193,11 +194,10 @@ ISR(TIMER1_OVF_vect)
 
   TCNT1 += timer1_counter; //preload časovnika
 
-  
-    l_temp = cnt_temp;
-    l_slanost = cnt_slanost;
+    //frekvenca iz SBE3 in SBE4
+    f_temp = cnt_temp;
+    f_slanost = cnt_slanost;
 
-  
     //resetiramo števce
     cnt_temp = 0;
     cnt_slanost = 0;
@@ -228,10 +228,17 @@ double calcTemp(double frekvenca)
 double calcSlanost(double f,double temperatura)
 {
   double frek = f;
+  double tmp = temperatura;
   if (frek <= 0) return 0;
 
-  frek = frek /1000;
-  return (g_sbe4+h_sbe4*pow(frek,2)+i_sbe4*pow(frek,3)+j_sbe4*pow(frek,4))/10*(1+Tcor*temperatura+Pcor*p); 
+  if (tmp <= 0) 
+  {
+    tmp = 0;
+  }
+  
+
+  frek = frek /1000; //frekvenco pretvorimo v kHz
+  return (g_sbe4+h_sbe4*pow(frek,2)+i_sbe4*pow(frek,3)+j_sbe4*pow(frek,4))/10*(1+Tcor*tmp+Pcor*p); 
 }
 
 /**
@@ -243,20 +250,11 @@ void loop() {
   if (bPrvaMeritev == false)
   {
     bPrvaMeritev = true;
-    l_temp = 0;
-    l_slanost = 0;
+    f_temp = 0;
+    f_slanost = 0;
     return;
   }
   
-     Serial.println("xxx");
-     Serial.println(l_slanost);
-
-     Serial.println(calcSlanost(l_slanost,15));
-     
-    // Serial.println(calcTemp(l_temp),3);
-    
-    
-
   EthernetClient client = server.available();
 
   if (client) {
@@ -270,6 +268,10 @@ void loop() {
         Serial.write(c);
         if (c == '\n' && bTekocaVrstica)
         {
+          
+          double local_temp = calcTemp(f_temp) ;
+          double local_sal  = calcSlanost(f_slanost,local_temp);
+          
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/xml");
           client.println("Connection: close"); 
@@ -278,18 +280,18 @@ void loop() {
           client.println("<root>");
           client.println("<temperature>");
           client.println("<value>");
-          client.print(calcTemp(l_temp), 3);
+          client.print(local_temp, 3);
           client.println("</value>");
           client.println("<freq>");
-          client.println(l_temp);
+          client.print(f_temp);
           client.println("</freq>");
           client.println("</temperature>");
           client.println("<salinity>");
           client.println("<value>");
-          client.print(calcSlanost(l_slanost,15),3);
+          client.print(local_sal,3);
           client.println("</value>");
           client.println("<freq>");
-          client.println(l_slanost);
+          client.print(f_slanost);
           client.println("</freq>");
           client.println("</salinity>");
           client.println("</root>");
