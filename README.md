@@ -1,6 +1,6 @@
 # Arduino Seabird SBE3 SBE4 
 
-The project contains C/C++ code for Ardiuno Uno which is connected over custom made hardware shield to SBE-3 and SBE-4. The shield contains two comparators which are there to convert analog signal from SBE3 and SBE4 to TTL logic.
+The project contains C/C++ code for Ardiuno Uno and a shield (Eagle project) for SBE-3 and SBE-4 
 
 # SBE 3
 Intended primarily for use on moored and fixed-site temperature measuring systems, the SBE 3S can also be used as a component in custom systems or for high-accuracy industrial and environmental temperature monitoring applications. The low noise characteristics of the SBE 3S allow the use of hybrid frequency measuring techniques to obtain rapid sampling with very high resolution; 40 μ°C resolution can be readily obtained at a 6 Hz sampling rate.
