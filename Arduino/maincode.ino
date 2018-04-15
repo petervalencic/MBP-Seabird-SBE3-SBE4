@@ -231,15 +231,12 @@ double calcSlanost(double f,double temperatura)
   
   if (frek <= 0) return 0;
 
-  //if (tmp <= 0) 
- // {
- //   tmp = 0;
- // }
-  
-
   frek = frek / 1000; //frekvenco pretvorimo v kHz
-   
-  return (g_sbe4+h_sbe4*pow(frek,2)+i_sbe4*pow(frek,3)+j_sbe4*pow(frek,4))/10*(1+Tcor*tmp+Pcor*p); 
+  double prevodnost = (g_sbe4+h_sbe4*pow(frek,2)+i_sbe4*pow(frek,3)+j_sbe4*pow(frek,4))/10*(1+Tcor*tmp+Pcor*p) * 10 ;  //mS/cm = S/m * 10
+
+  double psu = calcctd(tmp, prevodnost, 1);
+
+  return psu;
 }
 
 //metoda za preračun slanosti iz prevodnosti za podano temperaturo, prevodnost in tlak
