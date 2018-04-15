@@ -1,10 +1,12 @@
 /*****************************************************************
    Merjenje temperature in slanosti s pomočjo
    temperaturne sonde SeaBird SBE-3,
-   Seabird SBE-4 ter miktonotrolerja
+   sonde za slanost Seabird SBE-4 ter miktonotrolerja
    Arduino UNO
 
    Peter Valenčič, 05.12.2017
+
+   1.) Sprememba preračuna slanosti iz prevodnosti, 15.04.2018
  ****************************************************************/
 
 #include <SPI.h>
@@ -55,10 +57,7 @@ boolean bPrvaMeritev = false;
 
 EthernetServer server = EthernetServer(80);
 
-/**
-   setup(), metoda se izvede ob priključitvi napetosti na mikroknotroler.
-   V metodi se nastavijo vsi potrebni parametri
-*/
+
 void setup() {
   Serial.begin(9600);
   noInterrupts();     //prekinemo izvajanje interruptov
@@ -224,21 +223,70 @@ double calcTemp(double frekvenca)
   return (1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15);
 }
 
-//metoda preračuna slanost iz frekvence
+//metoda preračuna slanost iz prevodnosti (frekvence in temperature)
 double calcSlanost(double f,double temperatura)
 {
   double frek = f;
   double tmp = temperatura;
+  
   if (frek <= 0) return 0;
 
-  if (tmp <= 0) 
-  {
-    tmp = 0;
-  }
+  //if (tmp <= 0) 
+ // {
+ //   tmp = 0;
+ // }
   
 
-  frek = frek /1000; //frekvenco pretvorimo v kHz
+  frek = frek / 1000; //frekvenco pretvorimo v kHz
+   
   return (g_sbe4+h_sbe4*pow(frek,2)+i_sbe4*pow(frek,3)+j_sbe4*pow(frek,4))/10*(1+Tcor*tmp+Pcor*p); 
+}
+
+//metoda za preračun slanosti iz prevodnosti za podano temperaturo, prevodnost in tlak
+double calcctd(double t, double c, double p)
+{
+  double a0 = 0.008;
+  double a1 = -0.1692;
+  double a2 = 25.3851;
+  double a3 = 14.0941;
+  double a4 = -7.0261;
+  double a5 = 2.7081;
+  double b0 = 0.0005;
+  double b1 = -0.0056;
+  double b2 = -0.0066;
+  double b3 = -0.0375;
+  double b4 = 0.0636;
+  double b5 = -0.0144;
+  double k = 0.0162;
+
+
+  double Aa1 = 2.070*pow(10,-5);
+
+  double Aa2 = -6.370*pow(10,-10);
+  double Aa3 = 3.989*pow(10,-15);
+
+  double Bb1 = 0.03426;
+
+  double Bb2 = 0.0004464;
+  double Bb3 = 0.4215;
+  double Bb4 = -0.003107;
+    
+  double c0 = 0.6766097;
+  double c1 = 0.0200564;
+  double c2 = 0.0001104259;
+  double c3 = -0.00000069698;
+  double c4 = 0.0000000010031;
+
+  double temp = 1.00024*t;
+  double R = c / 42.914;
+
+  double rt = c0+c1*temp+c2*temp*temp+c3*temp*temp*temp+c4*temp*temp*temp*temp;
+  double alpha = (Aa1*p+Aa2*p*p+Aa3*p*p*p)/(1+Bb1*temp+Bb2*temp*temp+Bb3*R+Bb4*temp*R);
+  double Rt = R/(rt*(1+alpha));
+  
+  double S = a0+a1*pow(Rt,0.5)+a2*Rt+a3*pow(Rt,1.5)+a4*Rt*Rt+a5*pow(Rt,2.5)+ (temp-15)*(b0+b1*pow(Rt,0.5)+b2*Rt+b3*pow(Rt,1.5)+b4*Rt*Rt+b5*pow(Rt,2.5))/(1+k*(temp-15));
+  
+  return S;
 }
 
 /**
