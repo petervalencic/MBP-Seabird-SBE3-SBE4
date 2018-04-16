@@ -251,13 +251,11 @@ double calcSlanost(double t, double c, double p)
   double b5 = -0.0144;
   double k = 0.0162;
 
-
   double Aa1 = 2.070e-5;
   double Aa2 = -6.370e-10;
   double Aa3 = 3.989e-15;
 
   double Bb1 = 0.03426;
-
   double Bb2 = 0.0004464;
   double Bb3 = 0.4215;
   double Bb4 = -0.003107;
@@ -312,6 +310,9 @@ void loop() {
           
           //dobimo prevodnost S/m in preračunamo slanost 
           double local_sal  = calcPrevodnost(f_prevodnost,local_temp);
+
+          //pri slanosti moramo enoto S/m množiti z 10 da dobimo mS/cm
+          //predpostavimo da je tlak 0.2 dBar
           local_sal = calcSlanost(local_temp, (local_sal * 10), 0.2);
           
           client.println("HTTP/1.1 200 OK");
