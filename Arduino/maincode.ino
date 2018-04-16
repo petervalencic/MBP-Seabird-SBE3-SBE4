@@ -47,11 +47,11 @@ const double p      = 0;
 //pomožne spremenljivke
 int timer1_counter;
 int cnt_temp = 0;
-int cnt_slanost = 0;
+int cnt_prevodnost = 0;
 
 //frekvenca iz SBE3 in SBE4
 int f_temp = 0;
-int f_slanost = 0;
+int f_prevodnost = 0;
 
 boolean bPrvaMeritev = false;
 
@@ -195,11 +195,11 @@ ISR(TIMER1_OVF_vect)
 
     //frekvenca iz SBE3 in SBE4
     f_temp = cnt_temp;
-    f_slanost = cnt_slanost;
+    f_prevodnost = cnt_prevodnost;
 
     //resetiramo števce
     cnt_temp = 0;
-    cnt_slanost = 0;
+    cnt_prevodnost = 0;
   
 }
 
@@ -212,19 +212,18 @@ void beriTemperaturo()
 //števec, ki se povečuje v prekinitvi za slanost
 void beriSlanost()
 {
-  cnt_slanost++;
+  cnt_prevodnost++;
 }
 
 //metoda preračuna temperaturo iz frekvence
 double calcTemp(double frekvenca)
 {
-  
   double logRes = log(f_sbe3 / frekvenca);
   return (1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15);
 }
 
-//metoda preračuna slanost iz prevodnosti (frekvence in temperature)
-double calcSlanost(double f,double temperatura)
+//metoda preračuna prevodnost S/m iz (frekvence in temperature)
+double calcPrevodnost(double f,double temperatura)
 {
   double frek = f;
   double tmp = temperatura;
@@ -232,15 +231,11 @@ double calcSlanost(double f,double temperatura)
   if (frek <= 0) return 0;
 
   frek = frek / 1000; //frekvenco pretvorimo v kHz
-  double prevodnost = (g_sbe4+h_sbe4*pow(frek,2)+i_sbe4*pow(frek,3)+j_sbe4*pow(frek,4))/10*(1+Tcor*tmp+Pcor*p) * 10 ;  //mS/cm = S/m * 10
-
-  double psu = calcctd(tmp, prevodnost, 1);
-
-  return psu;
+  return (g_sbe4+h_sbe4*pow(frek,2)+i_sbe4*pow(frek,3)+j_sbe4*pow(frek,4))/10*(1+Tcor*tmp+Pcor*p) ;  //mS/cm = S/m * 10
 }
 
-//metoda za preračun slanosti iz prevodnosti za podano temperaturo, prevodnost in tlak
-double calcctd(double t, double c, double p)
+//metoda za preračun slanosti PSU za podano temperaturo, prevodnost in tlak
+double calcSlanost(double t, double c, double p)
 {
   double a0 = 0.008;
   double a1 = -0.1692;
@@ -257,10 +252,9 @@ double calcctd(double t, double c, double p)
   double k = 0.0162;
 
 
-  double Aa1 = 2.070*pow(10,-5);
-
-  double Aa2 = -6.370*pow(10,-10);
-  double Aa3 = 3.989*pow(10,-15);
+  double Aa1 = 2.070e-5;
+  double Aa2 = -6.370e-10;
+  double Aa3 = 3.989e-15;
 
   double Bb1 = 0.03426;
 
@@ -286,17 +280,16 @@ double calcctd(double t, double c, double p)
   return S;
 }
 
-/**
-   Glavna zanka programa
-*/
+//Glavna zanka programa
 void loop() {
 
+ 
   //prvo meritev izpustimo
   if (bPrvaMeritev == false)
   {
     bPrvaMeritev = true;
     f_temp = 0;
-    f_slanost = 0;
+    f_prevodnost = 0;
     return;
   }
   
@@ -314,8 +307,12 @@ void loop() {
         if (c == '\n' && bTekocaVrstica)
         {
           
+          //dobimo temperaturo
           double local_temp = calcTemp(f_temp) ;
-          double local_sal  = calcSlanost(f_slanost,local_temp);
+          
+          //dobimo prevodnost S/m in preračunamo slanost 
+          double local_sal  = calcPrevodnost(f_prevodnost,local_temp);
+          local_sal = calcSlanost(local_temp, (local_sal * 10), 0.2);
           
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/xml");
@@ -333,10 +330,10 @@ void loop() {
           client.println("</temperature>");
           client.println("<salinity>");
           client.println("<value>");
-          client.print(local_sal,3);
+          client.print(local_sal,4);
           client.println("</value>");
           client.println("<freq>");
-          client.print(f_slanost);
+          client.print(f_prevodnost);
           client.println("</freq>");
           client.println("</salinity>");
           client.println("</root>");
