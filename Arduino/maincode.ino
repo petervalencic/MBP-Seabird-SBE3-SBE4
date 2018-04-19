@@ -309,35 +309,41 @@ void loop() {
           double local_temp = calcTemp(f_temp) ;
           
           //dobimo prevodnost S/m in preračunamo slanost 
-          double local_sal  = calcPrevodnost(f_prevodnost,local_temp);
+          double local_cond  = calcPrevodnost(f_prevodnost,local_temp);
 
           //pri slanosti moramo enoto S/m množiti z 10 da dobimo mS/cm
           //predpostavimo da je tlak 0.2 dBar
-          local_sal = calcSlanost(local_temp, (local_sal * 10), 0.2);
+         // double local_sal = calcSlanost(local_temp, (local_cond * 10), 0.2);
           
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/xml");
           client.println("Connection: close"); 
           client.println(); 
-          client.println("<?xml version='1.0' encoding='UTF-8'?>");
-          client.println("<root>");
-          client.println("<temperature>");
-          client.println("<value>");
+          client.print("<?xml version='1.0' encoding='UTF-8'?>");
+          client.print("<root>");
+          client.print("<temp>");
+          client.print("<value>");
           client.print(local_temp, 3);
-          client.println("</value>");
-          client.println("<freq>");
+          client.print("</value>");
+          client.print("<freq>");
           client.print(f_temp);
-          client.println("</freq>");
-          client.println("</temperature>");
-          client.println("<salinity>");
-          client.println("<value>");
-          client.print(local_sal,4);
-          client.println("</value>");
-          client.println("<freq>");
+          client.print("</freq>");
+          client.print("</temp>");
+          client.print("<sal>");
+          client.print("<value>");
+          client.print(calcSlanost(local_temp, (local_cond * 10), 0.2),4);
+          client.print("</value>");
+          client.print("<freq>");
           client.print(f_prevodnost);
-          client.println("</freq>");
-          client.println("</salinity>");
-          client.println("</root>");
+          client.print("</freq>");
+          client.print("</sal>");
+          client.print("<cond>");
+          client.print("<value>");
+          client.print(local_cond,4);
+          client.print("</value><freq>");
+          client.print(f_prevodnost);
+          client.print("</freq></cond>");
+          client.print("</root>");
           client.println();
           break;
         }
