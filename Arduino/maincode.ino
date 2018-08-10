@@ -22,7 +22,7 @@ byte myDNS[4];
 
 //priključne sponke za SBE3 in SBE4
 const byte interruptPinTemp = 2;
-const byte interruptPinSlanost = 3;
+const byte interruptPinPrevodnost = 3;
 
 
 //konstante za SBE3
@@ -55,6 +55,8 @@ int f_prevodnost = 0;
 
 boolean bPrvaMeritev = false;
 
+boolean bTest = false;
+
 EthernetServer server = EthernetServer(80);
 
 
@@ -66,11 +68,11 @@ void setup() {
 
   //določimo vhode za branje frekvence
   pinMode(interruptPinTemp, INPUT_PULLUP);
-  pinMode(interruptPinSlanost, INPUT_PULLUP);
+  pinMode(interruptPinPrevodnost, INPUT_PULLUP);
 
   //določimo metodo, ki se bo ob prekinitvi izvedla
   attachInterrupt(digitalPinToInterrupt(interruptPinTemp), beriTemperaturo, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(interruptPinSlanost), beriSlanost, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(interruptPinPrevodnost), beriPrevodnost, CHANGE);
 
   //nastavimo časovno prekinitev na 1 sekundo pri taktu 16 MHz
   TCCR1A = 0;
@@ -193,14 +195,15 @@ ISR(TIMER1_OVF_vect)
 
   TCNT1 += timer1_counter; //preload časovnika
 
-    //frekvenca iz SBE3 in SBE4
-    f_temp = cnt_temp;
-    f_prevodnost = cnt_prevodnost;
+  //frekvenca iz SBE3 in SBE4
+  f_temp = cnt_temp;
+  f_prevodnost = cnt_prevodnost;
 
-    //resetiramo števce
-    cnt_temp = 0;
-    cnt_prevodnost = 0;
-  
+  bTest = true;
+  //resetiramo števce
+  cnt_temp = 0;
+  cnt_prevodnost = 0;
+
 }
 
 //števec, ki se povečuje v prekinitvi za temperaturo
@@ -210,7 +213,7 @@ void beriTemperaturo()
 }
 
 //števec, ki se povečuje v prekinitvi za slanost
-void beriSlanost()
+void beriPrevodnost()
 {
   cnt_prevodnost++;
 }
@@ -218,20 +221,21 @@ void beriSlanost()
 //metoda preračuna temperaturo iz frekvence
 double calcTemp(double frekvenca)
 {
+  if (frekvenca <= 0) return 0;
   double logRes = log(f_sbe3 / frekvenca);
   return (1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15);
 }
 
 //metoda preračuna prevodnost S/m iz (frekvence in temperature)
-double calcPrevodnost(double f,double temperatura)
+double calcPrevodnost(double f, double temperatura)
 {
   double frek = f;
   double tmp = temperatura;
-  
+
   if (frek <= 0) return 0;
 
   frek = frek / 1000; //frekvenco pretvorimo v kHz
-  return (g_sbe4+h_sbe4*pow(frek,2)+i_sbe4*pow(frek,3)+j_sbe4*pow(frek,4))/10*(1+Tcor*tmp+Pcor*p) ;  //mS/cm = S/m * 10
+  return (g_sbe4 + h_sbe4 * pow(frek, 2) + i_sbe4 * pow(frek, 3) + j_sbe4 * pow(frek, 4)) / 10 * (1 + Tcor * tmp + Pcor * p) ; //mS/cm = S/m * 10
 }
 
 //metoda za preračun slanosti PSU za podano temperaturo, prevodnost in tlak
@@ -259,29 +263,29 @@ double calcSlanost(double t, double c, double p)
   double Bb2 = 0.0004464;
   double Bb3 = 0.4215;
   double Bb4 = -0.003107;
-    
+
   double c0 = 0.6766097;
   double c1 = 0.0200564;
   double c2 = 0.0001104259;
   double c3 = -0.00000069698;
   double c4 = 0.0000000010031;
 
-  double temp = 1.00024*t;
+  double temp = 1.00024 * t;
   double R = c / 42.914;
 
-  double rt = c0+c1*temp+c2*temp*temp+c3*temp*temp*temp+c4*temp*temp*temp*temp;
-  double alpha = (Aa1*p+Aa2*p*p+Aa3*p*p*p)/(1+Bb1*temp+Bb2*temp*temp+Bb3*R+Bb4*temp*R);
-  double Rt = R/(rt*(1+alpha));
-  
-  double S = a0+a1*pow(Rt,0.5)+a2*Rt+a3*pow(Rt,1.5)+a4*Rt*Rt+a5*pow(Rt,2.5)+ (temp-15)*(b0+b1*pow(Rt,0.5)+b2*Rt+b3*pow(Rt,1.5)+b4*Rt*Rt+b5*pow(Rt,2.5))/(1+k*(temp-15));
-  
+  double rt = c0 + c1 * temp + c2 * temp * temp + c3 * temp * temp * temp + c4 * temp * temp * temp * temp;
+  double alpha = (Aa1 * p + Aa2 * p * p + Aa3 * p * p * p) / (1 + Bb1 * temp + Bb2 * temp * temp + Bb3 * R + Bb4 * temp * R);
+  double Rt = R / (rt * (1 + alpha));
+
+  double S = a0 + a1 * pow(Rt, 0.5) + a2 * Rt + a3 * pow(Rt, 1.5) + a4 * Rt * Rt + a5 * pow(Rt, 2.5) + (temp - 15) * (b0 + b1 * pow(Rt, 0.5) + b2 * Rt + b3 * pow(Rt, 1.5) + b4 * Rt * Rt + b5 * pow(Rt, 2.5)) / (1 + k * (temp - 15));
+
   return S;
 }
 
 //Glavna zanka programa
 void loop() {
 
- 
+
   //prvo meritev izpustimo
   if (bPrvaMeritev == false)
   {
@@ -290,7 +294,17 @@ void loop() {
     f_prevodnost = 0;
     return;
   }
-  
+
+  if (bTest == true)
+  {
+
+    Serial.print("temp:");
+    Serial.println(f_temp);
+    Serial.print("cond:");
+    Serial.println(f_prevodnost);
+    bTest = false;
+  }
+
   EthernetClient client = server.available();
 
   if (client) {
@@ -304,21 +318,21 @@ void loop() {
         Serial.write(c);
         if (c == '\n' && bTekocaVrstica)
         {
-          
+
           //dobimo temperaturo
           double local_temp = calcTemp(f_temp) ;
-          
-          //dobimo prevodnost S/m in preračunamo slanost 
-          double local_cond  = calcPrevodnost(f_prevodnost,local_temp);
+
+          //dobimo prevodnost S/m in preračunamo slanost
+          double local_cond  = calcPrevodnost(f_prevodnost, local_temp);
 
           //pri slanosti moramo enoto S/m množiti z 10 da dobimo mS/cm
           //predpostavimo da je tlak 0.2 dBar
-         // double local_sal = calcSlanost(local_temp, (local_cond * 10), 0.2);
-          
+          // double local_sal = calcSlanost(local_temp, (local_cond * 10), 0.2);
+
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/xml");
-          client.println("Connection: close"); 
-          client.println(); 
+          client.println("Connection: close");
+          client.println();
           client.print("<?xml version='1.0' encoding='UTF-8'?>");
           client.print("<root>");
           client.print("<temp>");
@@ -331,7 +345,7 @@ void loop() {
           client.print("</temp>");
           client.print("<sal>");
           client.print("<value>");
-          client.print(calcSlanost(local_temp, (local_cond * 10), 0.2),4);
+          client.print(calcSlanost(local_temp, (local_cond * 10), 0.2), 4);
           client.print("</value>");
           client.print("<freq>");
           client.print(f_prevodnost);
@@ -339,7 +353,7 @@ void loop() {
           client.print("</sal>");
           client.print("<cond>");
           client.print("<value>");
-          client.print(local_cond,4);
+          client.print(local_cond, 4);
           client.print("</value><freq>");
           client.print(f_prevodnost);
           client.print("</freq></cond>");
@@ -363,7 +377,7 @@ void loop() {
   }
 
 
- 
+
 }
 
 //metoda prebere MAC vrednost in jo zapiše v array
