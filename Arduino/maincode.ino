@@ -7,6 +7,7 @@
    Peter Valenčič, 05.12.2017
 
    1.) Sprememba preračuna slanosti iz prevodnosti, 15.04.2018
+   2.) Sprememba naziva metode prevodnosti, 10.08.2018
  ****************************************************************/
 
 #include <SPI.h>
