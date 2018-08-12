@@ -7,7 +7,7 @@
    Peter Valenčič, 05.12.2017
 
    1.) Sprememba preračuna slanosti iz prevodnosti, 15.04.2018
-   2.) Sprememba naziva metode prevodnosti, 10.08.2018
+   2.) Dodan Access-Control-Allow-Origin: *, 12.08.2018
  ****************************************************************/
 
 #include <SPI.h>
@@ -64,9 +64,7 @@ EthernetServer server = EthernetServer(80);
 void setup() {
   Serial.begin(9600);
   noInterrupts();     //prekinemo izvajanje interruptov
-  delay(500);
-  Serial.println("+----------------------+");
-
+  //delay(50);
   //določimo vhode za branje frekvence
   pinMode(interruptPinTemp, INPUT_PULLUP);
   pinMode(interruptPinPrevodnost, INPUT_PULLUP);
@@ -142,40 +140,40 @@ void setup() {
 
   int x;
 
-  Serial.print("\r\nmac ");
+  Serial.println("mac ");
   for (x = 0; x < 6; x++) {
     Serial.print(myMac[x], HEX);
     if (x < 5) Serial.print(":");
   }
 
-  Serial.print("\r\nip ");
+  Serial.println("ip ");
   for (x = 0; x < 4; x++) {
     Serial.print(myIP[x], DEC);
     if (x < 3) Serial.print(".");
   }
 
-  Serial.print("\r\nnetmask ");
+  Serial.println("nmsk ");
   for (x = 0; x < 4; x++) {
     Serial.print(myNM[x], DEC);
     if (x < 3) Serial.print(".");
   }
 
-  Serial.print("\r\ngateway ");
+  Serial.println("gtw ");
   for (x = 0; x < 4; x++) {
     Serial.print(myGW[x], DEC);
     if (x < 3) Serial.print(".");
   }
 
-  Serial.print("\r\ndns ");
+  Serial.println("dns ");
   for (x = 0; x < 4; x++) {
     Serial.print(myDNS[x], DEC);
     if (x < 3) Serial.print(".");
   }
 
-  Serial.println("\r\nStarting ethernet");
+  Serial.println("Start");
   Ethernet.begin(myMac, myIP, myDNS, myGW, myNM);
   Serial.println(Ethernet.localIP());
-  Serial.println("\r\nStarting webserver");
+  Serial.println("\r\nStart wbs");
 
   //startamo server socket
   server.begin();
@@ -222,8 +220,9 @@ void beriPrevodnost()
 //metoda preračuna temperaturo iz frekvence
 double calcTemp(double frekvenca)
 {
-  if (frekvenca <= 0) return 0;
-  double logRes = log(f_sbe3 / frekvenca);
+  double f = frekvenca;
+  if (f <= 0) return 0;
+  double logRes = log(f_sbe3 / f);
   return (1.0 / (g_sbe3 + (h_sbe3 * logRes) + (i_sbe3 * pow(logRes, 2.0)) + (j_sbe3 * pow(logRes, 3.0))) - 273.15);
 }
 
@@ -232,9 +231,7 @@ double calcPrevodnost(double f, double temperatura)
 {
   double frek = f;
   double tmp = temperatura;
-
   if (frek <= 0) return 0;
-
   frek = frek / 1000; //frekvenco pretvorimo v kHz
   return (g_sbe4 + h_sbe4 * pow(frek, 2) + i_sbe4 * pow(frek, 3) + j_sbe4 * pow(frek, 4)) / 10 * (1 + Tcor * tmp + Pcor * p) ; //mS/cm = S/m * 10
 }
@@ -242,6 +239,7 @@ double calcPrevodnost(double f, double temperatura)
 //metoda za preračun slanosti PSU za podano temperaturo, prevodnost in tlak
 double calcSlanost(double t, double c, double p)
 {
+  if (c <= 0) return 0;
   double a0 = 0.008;
   double a1 = -0.1692;
   double a2 = 25.3851;
@@ -274,8 +272,12 @@ double calcSlanost(double t, double c, double p)
   double temp = 1.00024 * t;
   double R = c / 42.914;
 
-  double rt = c0 + c1 * temp + c2 * temp * temp + c3 * temp * temp * temp + c4 * temp * temp * temp * temp;
-  double alpha = (Aa1 * p + Aa2 * p * p + Aa3 * p * p * p) / (1 + Bb1 * temp + Bb2 * temp * temp + Bb3 * R + Bb4 * temp * R);
+  //double rt = c0 + c1 * temp + c2 * temp * temp + c3 * temp * temp * temp + c4 * temp * temp * temp * temp;
+  double rt = c0 + c1 * temp + c2 * pow(temp, 2) + c3 * pow(temp, 3) + c4 * pow(temp, 4);
+
+  //double alpha = (Aa1 * p + Aa2 * p * p + Aa3 * p * p * p) / (1 + Bb1 * temp + Bb2 * temp * temp + Bb3 * R + Bb4 * temp * R);
+  double alpha = (Aa1 * p + Aa2 * pow(p, 2) + Aa3 * pow(p, 3)) / (1 + Bb1 * temp + Bb2 * pow(temp, 2) + Bb3 * R + Bb4 * temp * R);
+
   double Rt = R / (rt * (1 + alpha));
 
   double S = a0 + a1 * pow(Rt, 0.5) + a2 * Rt + a3 * pow(Rt, 1.5) + a4 * Rt * Rt + a5 * pow(Rt, 2.5) + (temp - 15) * (b0 + b1 * pow(Rt, 0.5) + b2 * Rt + b3 * pow(Rt, 1.5) + b4 * Rt * Rt + b5 * pow(Rt, 2.5)) / (1 + k * (temp - 15));
@@ -296,20 +298,20 @@ void loop() {
     return;
   }
 
-  if (bTest == true)
-  {
+  /*
+    if (bTest == true)
+    {
 
-    Serial.print("temp:");
-    Serial.println(f_temp);
-    Serial.print("cond:");
-    Serial.println(f_prevodnost);
-    bTest = false;
-  }
-
+      Serial.print("temp:");
+      Serial.println(f_temp);
+      Serial.print("cond:");
+      Serial.println(f_prevodnost);
+      bTest = false;
+    }
+  */
   EthernetClient client = server.available();
 
   if (client) {
-    Serial.println("nova zahteva");
     boolean bTekocaVrstica = true;
     while (client.connected())
     {
@@ -332,33 +334,22 @@ void loop() {
 
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/xml");
+          client.println("Access-Control-Allow-Origin: *");
           client.println("Connection: close");
           client.println();
-          client.print("<?xml version='1.0' encoding='UTF-8'?>");
-          client.print("<root>");
-          client.print("<temp>");
-          client.print("<value>");
+          client.print("<?xml version='1.0' encoding='UTF-8'?><root><temp><value>");
           client.print(local_temp, 3);
-          client.print("</value>");
-          client.print("<freq>");
+          client.print("</value><freq>");
           client.print(f_temp);
-          client.print("</freq>");
-          client.print("</temp>");
-          client.print("<sal>");
-          client.print("<value>");
+          client.print("</freq></temp><sal><value>");
           client.print(calcSlanost(local_temp, (local_cond * 10), 0.2), 4);
-          client.print("</value>");
-          client.print("<freq>");
+          client.print("</value><freq>");
           client.print(f_prevodnost);
-          client.print("</freq>");
-          client.print("</sal>");
-          client.print("<cond>");
-          client.print("<value>");
+          client.print("</freq></sal><cond><value>");
           client.print(local_cond, 4);
           client.print("</value><freq>");
           client.print(f_prevodnost);
-          client.print("</freq></cond>");
-          client.print("</root>");
+          client.print("</freq></cond></root>");
           client.println();
           break;
         }
@@ -414,6 +405,6 @@ byte getIP(char* ipBuf, byte* thisIP) {
     }
   }
 
-  if (thisOctet == 4) return (1);
-  else return (0);
+  if (thisOctet == 4) return 1;
+  else return 0;
 }
