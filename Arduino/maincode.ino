@@ -10,9 +10,7 @@
    2.) Dodan Access-Control-Allow-Origin: *, 12.08.2018
  ****************************************************************/
 
-#include <SPI.h>
-#include <SD.h>
-#include <Ethernet.h>
+#include < SPI.h > #include < SD.h > #include < Ethernet.h >
 
 //mrežne nastavitve
 byte myMac[6];
@@ -25,7 +23,6 @@ byte myDNS[4];
 const byte interruptPinTemp = 2;
 const byte interruptPinPrevodnost = 3;
 
-
 //konstante za SBE3
 //Kalibrirano Sea-Bird GmbH, SBE3 T121219Mar16
 const double g_sbe3 = 4.85442486e-003;
@@ -37,13 +34,13 @@ const double f_sbe3 = 1000;
 //konstante za SBE4
 //Kalibrirano Sea-Bird GmbH, SBE4 C141601Mar16
 const double g_sbe4 = -4.10731453e+000;
-const double h_sbe4 =  5.02267656e-001;
+const double h_sbe4 = 5.02267656e-001;
 const double i_sbe4 = -1.63378659e-004;
-const double j_sbe4 =  3.70269818e-005;
+const double j_sbe4 = 3.70269818e-005;
 const double f_sbe4 = 1000;
-const double Pcor   = -9.5700e-008;
-const double Tcor   = 3.2500e-006;
-const double p      = 0;
+const double Pcor = -9.5700e-008;
+const double Tcor = 3.2500e-006;
+const double p = 0;
 
 //pomožne spremenljivke
 int timer1_counter;
@@ -60,10 +57,9 @@ boolean bTest = false;
 
 EthernetServer server = EthernetServer(80);
 
-
 void setup() {
   Serial.begin(9600);
-  noInterrupts();     //prekinemo izvajanje interruptov
+  noInterrupts(); //prekinemo izvajanje interruptov
   //delay(50);
   //določimo vhode za branje frekvence
   pinMode(interruptPinTemp, INPUT_PULLUP);
@@ -76,15 +72,14 @@ void setup() {
   //nastavimo časovno prekinitev na 1 sekundo pri taktu 16 MHz
   TCCR1A = 0;
   TCCR1B = 0;
-  timer1_counter = 34286;   // preload timer 65536-16MHz/256/2Hz
+  timer1_counter = 34286; // preload timer 65536-16MHz/256/2Hz
 
-  TCNT1 = timer1_counter;   // preload timer
-  TCCR1B |= (1 << CS12);    // 256 prescaler
-  TIMSK1 |= (1 << TOIE1);   // enable timer overflow interrupt
+  TCNT1 = timer1_counter; // preload timer
+  TCCR1B |= (1 << CS12); // 256 prescaler
+  TIMSK1 |= (1 << TOIE1); // enable timer overflow interrupt
 
   // preveri če obstaja SD kartica
-  if (!SD.begin(4))
-  {
+  if (!SD.begin(4)) {
     Serial.println("SD card not present...");
     return;
   }
@@ -97,39 +92,36 @@ void setup() {
   int lineNo = 0;
 
   //sprehodimo se skozi vse zapise v datoteki in ustrezno zapišemo vrednosti
-  while (fh.available())
-  {
+  while (fh.available()) {
     char ch = fh.read();
     if (ch == '\n') {
       chPos = 0;
       switch (lineNo) {
-        case 0:
-          if (getMAC(netBuffer, myMac)) Serial.println(F("mac ok"));
-          break;
+      case 0:
+        if (getMAC(netBuffer, myMac)) Serial.println(F("mac ok"));
+        break;
 
-        case 1:
-          if (getIP(netBuffer, myIP)) Serial.println(F("ip ok"));
-          break;
+      case 1:
+        if (getIP(netBuffer, myIP)) Serial.println(F("ip ok"));
+        break;
 
-        case 2:
-          if (getIP(netBuffer, myNM)) Serial.println(F("netmask ok"));
-          break;
+      case 2:
+        if (getIP(netBuffer, myNM)) Serial.println(F("netmask ok"));
+        break;
 
-        case 3:
-          if (getIP(netBuffer, myGW)) Serial.println(F("gateway ok"));
-          break;
+      case 3:
+        if (getIP(netBuffer, myGW)) Serial.println(F("gateway ok"));
+        break;
 
-        case 4:
-          if (getIP(netBuffer, myDNS)) Serial.println(F("dns ok"));
-          break;
+      case 4:
+        if (getIP(netBuffer, myDNS)) Serial.println(F("dns ok"));
+        break;
       }
 
       lineNo++;
-    }
-    else if (ch == '\r') {
+    } else if (ch == '\r') {
       // do nothing
-    }
-    else if (chPos < 31) {
+    } else if (chPos < 31) {
       netBuffer[chPos] = ch;
       chPos++;
       netBuffer[chPos] = 0;
@@ -183,12 +175,10 @@ void setup() {
 
 }
 
-
 /**
    Prekinitvena servisna rutina. Izvaja se 1x na sekundo
 */
-ISR(TIMER1_OVF_vect)
-{
+ISR(TIMER1_OVF_vect) {
 
   if (bPrvaMeritev == false) return;
 
@@ -206,20 +196,17 @@ ISR(TIMER1_OVF_vect)
 }
 
 //števec, ki se povečuje v prekinitvi za temperaturo
-void beriTemperaturo()
-{
+void beriTemperaturo() {
   cnt_temp++;
 }
 
 //števec, ki se povečuje v prekinitvi za slanost
-void beriPrevodnost()
-{
+void beriPrevodnost() {
   cnt_prevodnost++;
 }
 
 //metoda preračuna temperaturo iz frekvence
-double calcTemp(double frekvenca)
-{
+double calcTemp(double frekvenca) {
   double f = frekvenca;
   if (f <= 0) return 0;
   double logRes = log(f_sbe3 / f);
@@ -227,18 +214,16 @@ double calcTemp(double frekvenca)
 }
 
 //metoda preračuna prevodnost S/m iz (frekvence in temperature)
-double calcPrevodnost(double f, double temperatura)
-{
+double calcPrevodnost(double f, double temperatura) {
   double frek = f;
   double tmp = temperatura;
   if (frek <= 0) return 0;
   frek = frek / 1000; //frekvenco pretvorimo v kHz
-  return (g_sbe4 + h_sbe4 * pow(frek, 2) + i_sbe4 * pow(frek, 3) + j_sbe4 * pow(frek, 4)) / 10 * (1 + Tcor * tmp + Pcor * p) ; //mS/cm = S/m * 10
+  return (g_sbe4 + h_sbe4 * pow(frek, 2) + i_sbe4 * pow(frek, 3) + j_sbe4 * pow(frek, 4)) / 10 * (1 + Tcor * tmp + Pcor * p); //mS/cm = S/m * 10
 }
 
 //metoda za preračun slanosti PSU za podano temperaturo, prevodnost in tlak
-double calcSlanost(double t, double c, double p)
-{
+double calcSlanost(double t, double c, double p) {
   if (c <= 0) return 0;
   double a0 = 0.008;
   double a1 = -0.1692;
@@ -288,10 +273,8 @@ double calcSlanost(double t, double c, double p)
 //Glavna zanka programa
 void loop() {
 
-
   //prvo meritev izpustimo
-  if (bPrvaMeritev == false)
-  {
+  if (bPrvaMeritev == false) {
     bPrvaMeritev = true;
     f_temp = 0;
     f_prevodnost = 0;
@@ -313,20 +296,17 @@ void loop() {
 
   if (client) {
     boolean bTekocaVrstica = true;
-    while (client.connected())
-    {
-      if (client.available())
-      {
+    while (client.connected()) {
+      if (client.available()) {
         char c = client.read();
         Serial.write(c);
-        if (c == '\n' && bTekocaVrstica)
-        {
+        if (c == '\n' && bTekocaVrstica) {
 
           //dobimo temperaturo
-          double local_temp = calcTemp(f_temp) ;
+          double local_temp = calcTemp(f_temp);
 
           //dobimo prevodnost S/m in preračunamo slanost
-          double local_cond  = calcPrevodnost(f_prevodnost, local_temp);
+          double local_cond = calcPrevodnost(f_prevodnost, local_temp);
 
           //pri slanosti moramo enoto S/m množiti z 10 da dobimo mS/cm
           //predpostavimo da je tlak 0.2 dBar
@@ -354,8 +334,7 @@ void loop() {
           break;
         }
 
-        if (c == '\n')
-        {
+        if (c == '\n') {
           bTekocaVrstica = true;
         } else if (c != '\r') {
           bTekocaVrstica = false;
@@ -368,20 +347,18 @@ void loop() {
     client.stop();
   }
 
-
-
 }
 
 //metoda prebere MAC vrednost in jo zapiše v array
-byte getMAC(char* macBuf, byte* thisMAC) {
+byte getMAC(char * macBuf, byte * thisMAC) {
   byte thisLen = strlen(macBuf);
   byte thisOctet = 1;
 
-  thisMAC[0] = strtol(&macBuf[0], NULL, 16);
+  thisMAC[0] = strtol( & macBuf[0], NULL, 16);
 
   for (int x = 0; x < thisLen; x++) {
     if (macBuf[x] == ':') {
-      thisMAC[thisOctet] = strtol(&macBuf[x + 1], NULL, 16);
+      thisMAC[thisOctet] = strtol( & macBuf[x + 1], NULL, 16);
       thisOctet++;
     }
   }
@@ -392,15 +369,15 @@ byte getMAC(char* macBuf, byte* thisMAC) {
 }
 
 //metoda prebere IP naslov in ga zapiše v array
-byte getIP(char* ipBuf, byte* thisIP) {
+byte getIP(char * ipBuf, byte * thisIP) {
   byte thisLen = strlen(ipBuf);
   byte thisOctet = 1;
 
-  thisIP[0] = atoi(&ipBuf[0]);
+  thisIP[0] = atoi( & ipBuf[0]);
 
   for (int x = 0; x < thisLen; x++) {
     if (ipBuf[x] == '.') {
-      thisIP[thisOctet] = atoi(&ipBuf[x + 1]);
+      thisIP[thisOctet] = atoi( & ipBuf[x + 1]);
       thisOctet++;
     }
   }
